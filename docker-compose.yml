@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: taskflow_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: taskflow_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Named volume: data persists across docker-compose down/up.
+      # Without this, every restart wipes the DB.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow_user -d taskflow_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://taskflow_user:password@db:5432/taskflow_db
+      DEBUG: "true"
+    depends_on:
+      db:
+        condition: service_healthy   # wait for Postgres to be ready, not just started
+    volumes:
+      # Mount source code so changes reflect without rebuilding the image.
+      # Remove this in production.
+      - .:/app
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  postgres_data:
