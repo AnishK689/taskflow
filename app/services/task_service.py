@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from fastapi import HTTPException, status
-
+from sqlalchemy.exc import IntegrityError
 from app.models.task import Task, TaskStatus
 from app.schemas.task import TaskCreate, TaskUpdate, TaskStatusUpdate
 
@@ -12,7 +12,14 @@ TERMINAL_STATUSES = {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELL
 def create_task(db: Session, payload: TaskCreate, owner_id: int | None = None) -> Task:
     task = Task(**payload.model_dump(), owner_id=owner_id)
     db.add(task)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"owner_id {owner_id} does not exist.",
+        )
     db.refresh(task)
     return task
 

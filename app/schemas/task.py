@@ -13,14 +13,14 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
-    """PATCH semantics — all fields optional."""
+    """PATCH semantics — all fields optional.
+    Status is intentionally excluded — use PATCH /{id}/status for transitions.
+    That endpoint enforces the state machine; this one is for metadata only.
+    """
     title: str | None = None
     description: str | None = None
-    status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_at: datetime | None = None
-    result: str | None = None
-    error_message: str | None = None
 
 
 class TaskStatusUpdate(BaseModel):
